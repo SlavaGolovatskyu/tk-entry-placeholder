@@ -50,9 +50,19 @@ class App:
         ]
 
         # You can also give this to constructor
-        self.placeholder = TKPlaceHolder(self.test)
+        # TKPlaceHolder also have 2 other args
+        # First with_arrows: bool as default True Response for the bind entries to arrows keys (up, down)
+        # Second insert: bool = as default True Response for the insert placeholder into entries when call constructor
+        # Also this class have some methods which you can find in him, and check what they was doing
+        self.placeholder = TKPlaceHolder(self.test, with_arrows=True, insert=True)
         # or
         self.placeholder.source_entries = self.test
+
+        # Unbind all entries and clear all which saved in object of this class
+        # self.placeholder.clear_all()
+
+        # unbind all entries from all keys
+        # self.placeholder.unbind_all()
 
     def run(self):
         self._draw_window()
