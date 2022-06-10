@@ -14,18 +14,26 @@ class TKPlaceHolder:
     BIND = 'bind'
     UNBIND = 'unbind'
     MOUSE_CLICK = '<Button-1>'
+    ARROW_TOP = '<Up>'
+    ARROW_DOWN = '<Down>'
 
     # @example
     # list = [{'placeholder': 'test', 'entry': tkinter.Entry}] with one entry
     # many [{'placeholder': 'test', 'entry': tkinter.Entry}, { ... }, { ... }]
     # ** insert argument call function which insert text which is located in placeholder key as default
-    def __init__(self, entries: List[Dict[str, str or tk.Entry]] = None, insert: bool=True) -> None:
+    def __init__(
+        self,
+        entries: List[Dict[str, str or tk.Entry]] = None,
+        with_arrows: bool = True,
+        insert: bool = True,
+    ) -> None:
         self._entries = entries
         self._last_entry: Dict[str, str or bool or tk.Entry] or None = None
+        self._with_arrows = with_arrows
 
         if entries is None: return
-
-        self._check_entries_on_correct(self._entries)
+        
+        self._check_entries_on_correct(entries)
 
         if insert:
             self._entries_actions(self._entries, TKPlaceHolder.INSERT)
@@ -119,7 +127,92 @@ class TKPlaceHolder:
         self._entries = None
         self._last_entry = None
 
-    def _check_entries_on_correct(self, entries) -> None:
+    def _on_up(self, event):
+        self._on_arrow_keys(event, 'up')
+
+    def _on_down(self, event):
+        self._on_arrow_keys(event, 'down')
+
+    # if user tapped on binded entry
+    def _on_click(self, event) -> None:
+        # Find entry widget on which user was a clicked
+        on_clicked_entry = self._find_entry_by_event(event, TKPlaceHolder.ENTRY)
+
+        # if we have prev entry and he was empty, inserting placeholder's text
+        self._insert_in_last_entry(on_clicked_entry)
+
+        # set a last entry Current clicked entry
+        self._last_entry = on_clicked_entry
+        # Delete placeholder on the onclick
+        self._last_entry[TKPlaceHolder.ENTRY].delete(0, tk.END)
+    
+    # For bind entries on arrow keys up & down
+    # event -> tkinter event
+    # action: str = 'up' or 'down'
+    def _on_arrow_keys(self, event, action: str = 'up'):
+        last_ent_idx = self._find_entry_by_event(event, 'idx')
+
+        if last_ent_idx is None: return
+
+        self._insert_in_last_entry(self._entries[last_ent_idx])
+
+        down_or_up_entry = last_ent_idx - 1 if action == 'up' else last_ent_idx + 1
+        down_or_up_entry = 0 if down_or_up_entry == len(self._entries) else down_or_up_entry
+
+        self._last_entry = self._entries[down_or_up_entry]
+
+        self.last_entry[TKPlaceHolder.ENTRY].delete(0, tk.END)
+        self.last_entry[TKPlaceHolder.ENTRY].focus()
+    
+    # event -> tkinter event
+    # idx_or_entry: str -> entry || idx
+    def _find_entry_by_event(self, event, idx_or_entry: str = 'entry'):
+        entry = [
+            [index, entry] for index, entry in enumerate(self._entries)
+            if entry[TKPlaceHolder.ENTRY] == event.widget
+        ]
+
+        if not entry: return
+
+        if idx_or_entry == TKPlaceHolder.ENTRY:
+            return entry[0][1]
+        return entry[0][0]
+    
+    def _insert_in_last_entry(self, entry):
+        if (
+            self._last_entry and
+            entry != self._last_entry[TKPlaceHolder.ENTRY] and not
+            self._last_entry[TKPlaceHolder.ENTRY].get()
+        ):
+            self._last_entry[TKPlaceHolder.ENTRY].insert(0, self._last_entry[TKPlaceHolder.TEXT])
+    
+    def _entries_actions(self, entries: List[Dict[str, str or bool or tk.Entry]], action: str = 'bind'):
+        ENTRY = TKPlaceHolder.ENTRY
+        MOUSE_CLICK = TKPlaceHolder.MOUSE_CLICK
+        ARROW_TOP = TKPlaceHolder.ARROW_TOP
+        ARROW_DOWN = TKPlaceHolder.ARROW_DOWN
+
+        for entry in entries:
+            if action == TKPlaceHolder.BIND:
+                if self._with_arrows:
+                    entry[ENTRY].bind(ARROW_TOP, self._on_up)
+                    entry[ENTRY].bind(ARROW_DOWN, self._on_down)
+                entry[ENTRY].bind(MOUSE_CLICK, self._on_click)
+
+            elif action == TKPlaceHolder.UNBIND:
+                if self._with_arrows:
+                    entry[ENTRY].unbind(ARROW_TOP)
+                    entry[ENTRY].unbind(ARROW_DOWN)
+                entry[ENTRY].unbind(MOUSE_CLICK)
+
+            elif action == TKPlaceHolder.INSERT:
+                entry[ENTRY].insert(0, entry[TKPlaceHolder.TEXT])
+            
+            elif action == TKPlaceHolder.DELETE:
+                entry[ENTRY].delete(0, tk.END)
+
+    @staticmethod
+    def _check_entries_on_correct(entries) -> None:
         errors = []
 
         if not isinstance(entries, list):
@@ -149,31 +242,3 @@ class TKPlaceHolder:
             for index, error in enumerate(errors):
                 print(f'\n\nError #{index+1} : \n', error, '\n\n')
             raise TypeError('Validation Error')
-
-    # if user tapped on binded entry
-    def _on_click(self, event) -> None:
-        # Find entry widget on which user was a clicked
-        on_clicked_entry, = [entry for entry in self._entries if entry[TKPlaceHolder.ENTRY] == event.widget]
-
-        # if we have prev entry and he was empty, inserting placeholder's text
-        if self._last_entry and not self._last_entry[TKPlaceHolder.ENTRY].get():
-            self._last_entry[TKPlaceHolder.ENTRY].insert(0, self._last_entry[TKPlaceHolder.TEXT])
-
-        # set a last entry Current clicked entry
-        self._last_entry = on_clicked_entry
-        # Delete placeholder on the onclick
-        self._last_entry[TKPlaceHolder.ENTRY].delete(0, tk.END)
-    
-    def _entries_actions(self, entries: List[Dict[str, str or bool or tk.Entry]], action: str = 'bind'):
-        for entry in entries:
-            if action == TKPlaceHolder.BIND:
-                entry[TKPlaceHolder.ENTRY].bind(TKPlaceHolder.MOUSE_CLICK, self._on_click)
-
-            elif action == TKPlaceHolder.UNBIND:
-                entry[TKPlaceHolder.ENTRY].unbind(TKPlaceHolder.MOUSE_CLICK)
-
-            elif action == TKPlaceHolder.INSERT:
-                entry[TKPlaceHolder.ENTRY].insert(0, entry[TKPlaceHolder.TEXT])
-            
-            elif action == TKPlaceHolder.DELETE:
-                entry[TKPlaceHolder.ENTRY].delete(0, tk.END)
