@@ -61,7 +61,7 @@ class App:
         # Unbind all entries and clear all which saved in object of this class
         # self.placeholder.clear_all()
 
-        # unbind all entries from all keys
+        # unbind all entries from binds which made an our library
         # self.placeholder.unbind_all()
 
     def run(self):
